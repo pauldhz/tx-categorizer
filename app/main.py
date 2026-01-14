@@ -1,17 +1,34 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-from app.model import predict_category
+from pydantic import BaseModel, Field
 
-app = FastAPI(title="Transaction Categorizer")
+from app.model import predict_transaction
+
+app = FastAPI(title="Transaction Categorizer", version="0.1.0")
+
 
 class TxIn(BaseModel):
-    date: str
-    type: str
-    description: str
-    montant: float
-    sens: str
+    date: str = Field(..., description="Date string from CSV, e.g. 01/10/2025")
+    type: str = Field(..., description="Transaction type from CSV")
+    description: str = Field(..., description="Bank description / merchant label")
+    montant: float = Field(..., description="Amount (positive number)")
+    sens: str = Field(..., description="DEBIT or CREDIT")
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/predict")
 def predict(tx: TxIn):
-    result = predict_category(tx.model_dump())
-    return result
+    """
+    Predict category/subcategory for a transaction.
+
+    Returns:
+      - category
+      - subcategory
+      - confidence (0..1)
+      - method ("rules" | "fallback")
+      - rule_id (optional)
+    """
+    return predict_transaction(tx.model_dump())
