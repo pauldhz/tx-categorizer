@@ -57,13 +57,11 @@ class TxModel:
 
         desc = str(tx.get("description", "") or "")
         typ = str(tx.get("type", "") or "")
-        sens = str(tx.get("sens", "") or "")
         montant = _parse_amount(tx.get("montant", 0.0))
 
         X = pd.DataFrame([{
-            "Description": desc,
-            "Type": typ,
-            "Sens": sens,
+            "description": desc,
+            "type": typ,
             "MontantNum": montant,
         }])
 

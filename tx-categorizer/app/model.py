@@ -9,7 +9,6 @@ from app.ml_model import TxModel
 
 _ml = TxModel()
 try:
-    print("Loading ml")
     _ml.load()
 except Exception:
     print("ml not trained yet")

@@ -1,0 +1,4 @@
+"datetime","date","account_type","category","type","asset_class","name","symbol","shares","price","amount","fee","tax","currency","original_amount","original_currency","fx_rate","description","transaction_id","counterparty_name","counterparty_iban","payment_reference","mcc_code"
+"2024-07-28T07:44:15.465620Z","2024-07-28","DEFAULT","CASH","CUSTOMER_INPAYMENT","","","","","","50.000000","","","EUR","","","","Apple Pay Top up","471ad65c-2d5c-469c-848c-36c7155a3891","","","",""
+"2024-07-28T07:44:20.979471Z","2024-07-28","DEFAULT","CASH","CARD_ORDERING_FEE","","","","","","0.000000","-50.00","","EUR","","","","Trade Republic Card","fc1a5d21-e526-4bdf-ad3a-96dfc85f0f26","","","",""
+"2024-07-31T20:30:32.605613Z","2024-07-31","DEFAULT","CASH","CUSTOMER_INBOUND","","M PAUL DENHEZ","","","","10.000000","","","EUR","","","","TEST","606adf71-6c2a-480e-9306-ec2107b0ef4a","M PAUL DENHEZ","FR7616275500000412664270831","",""

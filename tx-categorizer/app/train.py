@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Train a first ML model to categorize bank transactions.
 
-- Uses your labeled CSV (Category + Subcategory).
-- Learns from Description + a few optional structured fields (Type, Sens, Montant).
+- Uses your labeled CSV (Category + _subcategory).
+- Learns from Description + a few optional structured fields (Type, Montant).
 - Saves a single sklearn Pipeline to models/tx_model.joblib.
 
 Why a single Pipeline?
@@ -19,6 +19,7 @@ import argparse
 import json
 from pathlib import Path
 from typing import Tuple
+import matplotlib.pylab as plt
 
 import joblib
 import numpy as np
@@ -32,8 +33,40 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-REQUIRED_COLUMNS = ["Description", "Category", "Subcategory"]
+REQUIRED_COLUMNS = ["description", "_category", "_subcategory"]
 
+import re
+import unicodedata
+
+
+def normalize_description(description: str) -> str:
+    """
+    Normalize a transaction description for rules / ML usage.
+
+    Steps:
+    - handle None
+    - lowercase
+    - remove accents
+    - remove punctuation
+    - normalize spaces
+    """
+    if not description:
+        return ""
+
+    # Lowercase
+    text = description.lower()
+
+    # Remove accents (é → e, ç → c, etc.)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+
+    # Remove punctuation / special chars (keep letters & numbers)
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
+
+    # Normalize spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
 
 def parse_amount(x) -> float:
     """Parse 'Montant' that may use comma decimals (e.g. '29,21')."""
@@ -54,20 +87,19 @@ def load_and_clean(csv_path: str) -> pd.DataFrame:
         raise ValueError(f"Missing required columns in CSV: {missing}")
 
     # Trim labels (super important)
-    df["Category"] = df["Category"].fillna("").astype(str).str.strip()
-    df["Subcategory"] = df["Subcategory"].fillna("").astype(str).str.strip()
-    df["Description"] = df["Description"].fillna("").astype(str)
+    df["_category"] = df["_category"].fillna("").astype(str).str.strip()
+    df["_subcategory"] = df["_subcategory"].fillna("").astype(str).str.strip()
+    df["description"] = df["description"].fillna("").astype(str).apply(normalize_description)
 
     # Keep only labeled rows
-    df = df[(df["Category"] != "") & (df["Subcategory"] != "")].reset_index(drop=True)
+    df = df[(df["_category"] != "") & (df["_subcategory"] != "")].reset_index(drop=True)
 
     # Optional fields
-    df["Type"] = df["Type"].fillna("").astype(str) if "Type" in df.columns else ""
-    df["Sens"] = df["Sens"].fillna("").astype(str) if "Sens" in df.columns else ""
-    df["MontantNum"] = df["Montant"].apply(parse_amount) if "Montant" in df.columns else 0.0
+    df["type"] = df["type"].fillna("").astype(str) if "type" in df.columns else ""
+    df["MontantNum"] = df["amount"].apply(parse_amount) if "amount" in df.columns else 0.0
 
     # Target label = combined
-    df["Label"] = df["Category"] + " / " + df["Subcategory"]
+    df["Label"] = df["_category"] + " / " + df["_subcategory"]
     return df
 
 
@@ -76,7 +108,7 @@ def build_pipeline() -> Pipeline:
     Baseline model (fast):
     - TF-IDF on Description (bigrams)
     - SGDClassifier with log_loss (gives predict_proba)
-    - Add a bit of structure (Type, Sens, Montant)
+    - Add a bit of structure (type, amount)
     """
     preprocessor = ColumnTransformer(
         transformers=[
@@ -85,8 +117,8 @@ def build_pipeline() -> Pipeline:
                 ngram_range=(1, 2),
                 min_df=1,
                 max_features=12000,
-            ), "Description"),
-            ("cat_onehot", OneHotEncoder(handle_unknown="ignore"), ["Type", "Sens"]),
+            ), "description"),
+            ("cat_onehot", OneHotEncoder(handle_unknown="ignore"), ["type"]),
             ("num", Pipeline(steps=[
                 ("scaler", StandardScaler(with_mean=False)),
             ]), ["MontantNum"]),
@@ -128,7 +160,7 @@ def main():
     if len(df) < 30:
         raise ValueError(f"Not enough labeled rows to train reliably (found {len(df)}).")
 
-    X = df[["Description", "Type", "Sens", "MontantNum"]]
+    X = df[["description", "type", "MontantNum"]]
     y = df["Label"]
 
     X_train, X_test, y_train, y_test = safe_train_test_split(X, y)
@@ -137,6 +169,9 @@ def main():
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
+
+    plt.scatter(y_pred, y_test)
+    plt.show()
     report_txt = classification_report(y_test, y_pred, zero_division=0)
 
     print("\n=== Classification report (hold-out test set) ===\n")
